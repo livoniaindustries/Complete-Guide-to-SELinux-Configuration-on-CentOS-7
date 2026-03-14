@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Guide to SELinux Configuration on CentOS 7</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #24292e;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+        }
+        h1 {
+            font-size: 2em;
+        }
+        code {
+            font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', Courier, monospace;
+            background-color: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 85%;
+        }
+        pre {
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            padding: 16px;
+            overflow: auto;
+            line-height: 1.45;
+            border: 1px solid #ddd;
+        }
+        .note {
+            background-color: #fff5b1;
+            border-left: 4px solid #f9c513;
+            padding: 12px;
+            margin: 16px 0;
+            border-radius: 3px;
+        }
+        .warning {
+            background-color: #ffeef0;
+            border-left: 4px solid #d73a49;
+            padding: 12px;
+            margin: 16px 0;
+            border-radius: 3px;
+        }
+        .info-box {
+            background-color: #e6f3ff;
+            border-left: 4px solid #0366d6;
+            padding: 12px;
+            margin: 16px 0;
+            border-radius: 3px;
+        }
+        .danger-box {
+            background-color: #ffebee;
+            border-left: 4px solid #c62828;
+            padding: 12px;
+            margin: 16px 0;
+            border-radius: 3px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+        }
+        th, td {
+            border: 1px solid #dfe2e5;
+            padding: 8px 13px;
+        }
+        th {
+            background-color: #f6f8fa;
+        }
+        .step {
+            background-color: #f9f9f9;
+            border-left: 4px solid #0366d6;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .command-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 16px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+        .config-file {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 16px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+        .status-box {
+            background-color: #e8f5e9;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .policy-box {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .screenshot-placeholder {
+            background-color: #f1f8ff;
+            border: 2px dashed #0366d6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            color: #0366d6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Complete Guide to SELinux Configuration on CentOS 7</h1>
+
+    <div class="info-box">
+        <strong>🛡️ What is SELinux?</strong> SELinux (Security-Enhanced Linux) is a kernel-level mandatory access control (MAC) system that provides an additional layer of security. It was developed by the US National Security Agency (NSA) and released as open source. SELinux enforces security policies that limit what processes and users can do, even if they have root privileges.
+    </div>
+
+    <div class="danger-box">
+        <strong>⚠️ Important:</strong> SELinux is a critical security component. Disabling it reduces system security. This guide uses CentOS 7 for all examples.
+    </div>
+
+    <h2>Checking SELinux Status</h2>
+
+    <div class="step">
+        <h3>Using sestatus Command</h3>
+        <div class="command-block">
+/usr/sbin/sestatus
+        </div>
+
+        <p>Example output:</p>
+        <div class="config-file">
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      31
+        </div>
+
+        <table>
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>SELinux status: enabled</code></td>
+                <td>Indicates that SELinux is enabled</td>
+            </tr>
+            <tr>
+                <td><code>Current mode: enforcing</code></td>
+                <td>SELinux is in enforced mode (actively blocking)</td>
+            </tr>
+            <tr>
+                <td><code>Policy from config file: targeted</code></td>
+                <td>Using targeted policy (protects specific services)</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="step">
+        <h3>Using getenforce Command</h3>
+        <div class="command-block">
+/usr/sbin/getenforce
+        </div>
+
+        <p>Possible outputs:</p>
+        <table>
+            <tr>
+                <th>Output</th>
+                <th>Meaning</th>
+            </tr>
+            <tr>
+                <td><code>Enforcing</code></td>
+                <td>SELinux is active and enforcing policy rules (blocking violations)</td>
+            </tr>
+            <tr>
+                <td><code>Permissive</code></td>
+                <td>SELinux is active but only logs violations (doesn't block) - only DAC rules are used</td>
+            </tr>
+            <tr>
+                <td><code>Disabled</code></td>
+                <td>SELinux is completely disabled</td>
+            </tr>
+        </table>
+    </div>
+
+    <h2>Installing and Verifying SELinux Packages</h2>
+
+    <div class="step">
+        <h3>Check Installed SELinux Packages</h3>
+        
+        <div class="command-block">
+# Check SELinux packages
+rpm -qa | grep selinux
+
+# Check policycoreutils
+rpm -q policycoreutils
+
+# Check setroubleshoot
+rpm -qa | grep setroubleshoot
+        </div>
+
+        <p>Required packages:</p>
+        <ul>
+            <li><code>selinux-policy-targeted</code> - Targeted SELinux policy</li>
+            <li><code>selinux-policy</code> - SELinux policy core</li>
+            <li><code>libselinux</code> - SELinux library</li>
+            <li><code>libselinux-python</code> - Python bindings for SELinux</li>
+            <li><code>libselinux-utils</code> - SELinux utilities</li>
+            <li><code>policycoreutils</code> - Policy core utilities</li>
+            <li><code>setroubleshoot</code> - SELinux troubleshoot tools</li>
+            <li><code>setroubleshoot-server</code> - Server for setroubleshoot</li>
+            <li><code>setroubleshoot-plugins</code> - Plugins for setroubleshoot</li>
+        </ul>
+
+        <h4>Install Missing Packages:</h4>
+        <div class="command-block">
+sudo yum install selinux-policy-targeted selinux-policy libselinux libselinux-python \
+libselinux-utils policycoreutils setroubleshoot setroubleshoot-server setroubleshoot-plugins -y
+        </div>
+    </div>
+
+    <h2>Initial SELinux Setup Process</h2>
+
+    <div class="warning">
+        <strong>⚠️ Critical Step:</strong> Before fully enabling SELinux, you must perform a proper initialization process to avoid system boot problems.
+    </div>
+
+    <div class="step">
+        <h3>Step 1: Set SELinux to Permissive Mode</h3>
+        
+        <p>Edit the SELinux configuration file:</p>
+        <div class="command-block">
+sudo vi /etc/selinux/config
+        </div>
+
+        <div class="config-file">
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=permissive
+# SELINUXTYPE= can take one of these three values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+        </div>
+
+        <div class="note">
+            <strong>📌 Why permissive first?</strong> Setting to permissive allows SELinux to label all files without blocking any services, preventing boot failures.
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: File System Relabeling</h3>
+        
+        <p>Before enabling SELinux, all files must be marked with SELinux contexts. Create the <code>.autorelabel</code> file:</p>
+        
+        <div class="command-block">
+sudo touch /.autorelabel
+        </div>
+
+        <div class="danger-box">
+            <strong>⚠️ CRITICAL:</strong> Without proper file labeling, limited domains may be denied access, which can lead to incorrect operating system loading or boot failures!
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Reboot the System</h3>
+        
+        <div class="command-block">
+sudo shutdown -r now
+# or
+sudo reboot
+        </div>
+
+        <p>During this reboot:</p>
+        <ul>
+            <li>The system will automatically relabel all files with SELinux contexts</li>
+            <li>This may take several minutes depending on the number of files</li>
+            <li>The system will boot with SELinux in permissive mode (logging only, not blocking)</li>
+        </ul>
+
+        <div class="screenshot-placeholder">
+            🔄 System rebooting with file relabeling in progress...
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Verify No SELinux Denials</h3>
+        
+        <p>After reboot, check if SELinux blocked any actions during boot:</p>
+        
+        <div class="command-block">
+sudo grep "SELinux is preventing" /var/log/messages
+        </div>
+
+        <p>The output should be <strong>empty</strong>, which means SELinux did not block any actions and everything is working correctly.</p>
+
+        <div class="status-box">
+            ✅ If empty: Everything is fine, proceed to enforcing mode.<br>
+            ❌ If denials appear: Troubleshoot the denials before proceeding to enforcing.
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Enable Enforcing Mode</h3>
+        
+        <p>After confirming no denials, set SELinux to enforcing mode:</p>
+
+        <div class="command-block">
+sudo vi /etc/selinux/config
+        </div>
+
+        <div class="config-file">
+SELINUX=enforcing
+SELINUXTYPE=targeted
+        </div>
+
+        <p>Or set it immediately without reboot:</p>
+        <div class="command-block">
+sudo setenforce 1
+        </div>
+
+        <p>Verify the change:</p>
+        <div class="command-block">
+getenforce
+# Should output: Enforcing
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 6: Final Reboot</h3>
+        
+        <div class="command-block">
+sudo shutdown -r now
+        </div>
+
+        <p>After reboot, verify SELinux is working correctly:</p>
+        <div class="command-block">
+/usr/sbin/getenforce
+# Should show: Enforcing
+
+/usr/sbin/sestatus | grep "Current mode"
+# Should show: Current mode: enforcing
+        </div>
+    </div>
+
+    <h2>SELinux Policy Types</h2>
+
+    <div class="policy-box">
+        <strong>📋 Policy Location:</strong> All policies are located in the <code>/etc/selinux/</code> directory.
+    </div>
+
+    <table>
+        <tr>
+            <th>Policy</th>
+            <th>Description</th>
+            <th>Use Case</th>
+        </tr>
+        <tr>
+            <td><strong>targeted</strong></td>
+            <td>Protects basic system services (web server, DHCP, DNS, etc.) but does not restrict all other programs. This is the <strong>default and most commonly used</strong> policy.</td>
+            <td>Most servers, general purpose systems</td>
+        </tr>
+        <tr>
+            <td><strong>strict</strong></td>
+            <td>The most stringent policy. Manages not only network services but also user programs. Every process is confined.</td>
+            <td>High-security environments, military, financial</td>
+        </tr>
+        <tr>
+            <td><strong>mls</strong> (Multi-Level Security)</td>
+            <td>Contains not only rules but also various security levels. Implements a multi-level security system based on SELinux.</td>
+            <td>Government, classified data, multi-level secure environments</td>
+        </tr>
+    </table>
+
+    <h2>Essential SELinux Commands</h2>
+
+    <table>
+        <tr>
+            <th>Command</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td><code>getenforce</code></td>
+            <td>Show current SELinux mode (Enforcing/Permissive/Disabled)</td>
+        </tr>
+        <tr>
+            <td><code>setenforce 0</code></td>
+            <td>Set SELinux to permissive mode (immediate, until reboot)</td>
+        </tr>
+        <tr>
+            <td><code>setenforce 1</code></td>
+            <td>Set SELinux to enforcing mode (immediate, until reboot)</td>
+        </tr>
+        <tr>
+            <td><code>sestatus</code></td>
+            <td>Display detailed SELinux status</td>
+        </tr>
+        <tr>
+            <td><code>ls -Z</code></td>
+            <td>View SELinux context of files</td>
+        </tr>
+        <tr>
+            <td><code>ps -Z</code></td>
+            <td>View SELinux context of processes</td>
+        </tr>
+        <tr>
+            <td><code>id -Z</code></td>
+            <td>View SELinux context of current user</td>
+        </tr>
+        <tr>
+            <td><code>chcon</code></td>
+            <td>Change SELinux context of a file</td>
+        </tr>
+        <tr>
+            <td><code>restorecon</code></td>
+            <td>Restore default SELinux context</td>
+        </tr>
+        <tr>
+            <td><code>audit2why</code></td>
+            <td>Analyze SELinux denial messages</td>
+        </tr>
+        <tr>
+            <td><code>audit2allow</code></td>
+            <td>Generate policy rules from denial messages</td>
+        </tr>
+        <tr>
+            <td><code>seinfo</code></td>
+            <td>Query SELinux policy</td>
+        </tr>
+        <tr>
+            <td><code>sesearch</code></td>
+            <td>Search SELinux policy rules</td>
+        </tr>
+    </table>
+
+    <h2>Common SELinux Scenarios and Solutions</h2>
+
+    <div class="step">
+        <h3>Scenario 1: Web Server (Apache) Can't Access Files</h3>
+        
+        <p><strong>Problem:</strong> Apache (httpd) can't read files in /var/www/html/</p>
+        
+        <div class="command-block">
+# Check SELinux context
+ls -Z /var/www/html/
+
+# Fix by restoring default context
+sudo restorecon -Rv /var/www/html/
+
+# Or manually change context
+sudo chcon -R -t httpd_sys_content_t /var/www/html/
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Scenario 2: Changing Default Port for a Service</h3>
+        
+        <p><strong>Problem:</strong> Changing Apache to run on port 8080 (non-standard)</p>
+        
+        <div class="command-block">
+# Check what ports are allowed for httpd
+sudo semanage port -l | grep http
+
+# Add port 8080 to httpd port context
+sudo semanage port -a -t http_port_t -p tcp 8080
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Scenario 3: Analyzing SELinux Denials</h3>
+        
+        <p><strong>Problem:</strong> Something is being blocked, need to understand why</p>
+        
+        <div class="command-block">
+# Check audit logs for denials
+sudo grep "SELinux is preventing" /var/log/audit/audit.log
+
+# Use audit2why to analyze
+sudo cat /var/log/audit/audit.log | audit2why
+
+# Generate policy to allow (if needed)
+sudo cat /var/log/audit/audit.log | audit2allow -M mypol
+sudo semodule -i mypol.pp
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Scenario 4: FTP Upload Directory Issues</h3>
+        
+        <p><strong>Problem:</strong> vsftpd users can't upload files</p>
+        
+        <div class="command-block">
+# Allow FTP to read/write in home directories
+sudo setsebool -P ftp_home_dir on
+
+# Check current booleans
+sudo getsebool -a | grep ftp
+        </div>
+    </div>
+
+    <h2>Working with SELinux Booleans</h2>
+
+    <p>Booleans allow you to enable/disable specific SELinux rules without writing policy.</p>
+
+    <table>
+        <tr>
+            <th>Command</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>getsebool -a</code></td>
+            <td>List all SELinux booleans and their current state</td>
+        </tr>
+        <tr>
+            <td><code>setsebool httpd_can_network_connect on</code></td>
+            <td>Enable boolean (temporary, until reboot)</td>
+        </tr>
+        <tr>
+            <td><code>setsebool -P httpd_can_network_connect on</code></td>
+            <td>Enable boolean permanently (-P flag)</td>
+        </tr>
+        <tr>
+            <td><code>setsebool httpd_can_network_connect off</code></td>
+            <td>Disable boolean</td>
+        </tr>
+    </table>
+
+    <h3>Common Useful Booleans:</h3>
+    <table>
+        <tr>
+            <th>Boolean</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td><code>httpd_can_network_connect</code></td>
+            <td>Allow Apache to make network connections (proxies, APIs)</td>
+        </tr>
+        <tr>
+            <td><code>httpd_can_sendmail</code></td>
+            <td>Allow Apache to send email</td>
+        </tr>
+        <tr>
+            <td><code>httpd_enable_homedirs</code></td>
+            <td>Allow Apache to access user home directories</td>
+        </tr>
+        <tr>
+            <td><code>ftp_home_dir</code></td>
+            <td>Allow FTP to read/write files in user home directories</td>
+        </tr>
+        <tr>
+            <td><code>allow_ftpd_full_access</code></td>
+            <td>Give FTP daemon full access to the filesystem</td>
+        </tr>
+        <tr>
+            <td><code>virt_use_nfs</code></td>
+            <td>Allow virtual machines to use NFS storage</td>
+        </tr>
+        <tr>
+            <td><code>samba_enable_home_dirs</code></td>
+            <td>Allow Samba to share user home directories</td>
+        </tr>
+    </table>
+
+    <h2>Troubleshooting SELinux</h2>
+
+    <div class="step">
+        <h3>1. Check Logs</h3>
+        <div class="command-block">
+# Main SELinux denial log
+sudo tail -f /var/log/audit/audit.log
+
+# Messages log
+sudo tail -f /var/log/messages | grep SELinux
+
+# For older systems
+sudo tail -f /var/log/secure
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>2. Install and Use setroubleshoot</h3>
+        <div class="command-block">
+# Install setroubleshoot if not already installed
+sudo yum install setroubleshoot setroubleshoot-server -y
+
+# Start the service
+sudo systemctl start setroubleshootd
+sudo systemctl enable setroubleshootd
+
+# Check sealert messages
+sudo sealert -a /var/log/audit/audit.log
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>3. Generate Custom Policy for Denials</h3>
+        <div class="command-block">
+# Generate policy module from denials
+sudo grep "SELinux is preventing" /var/log/audit/audit.log | audit2allow -M localpolicy
+
+# Install the generated policy
+sudo semodule -i localpolicy.pp
+
+# Verify it's loaded
+sudo semodule -l | grep localpolicy
+        </div>
+    </div>
+
+    <h2>Complete SELinux Setup Script</h2>
+
+    <div class="config-file">
+#!/bin/bash
+# Complete SELinux Setup Script for CentOS 7
+# Run with: sudo bash setup-selinux.sh
+
+echo "=== SELinux Setup Script ==="
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root!"
+   exit 1
+fi
+
+# Step 1: Install required packages
+echo "Installing SELinux packages..."
+yum install -y selinux-policy-targeted selinux-policy libselinux \
+libselinux-python libselinux-utils policycoreutils setroubleshoot \
+setroubleshoot-server setroubleshoot-plugins
+
+# Step 2: Check current status
+echo "Current SELinux status:"
+getenforce
+
+# Step 3: Set to permissive in config
+echo "Setting SELinux to permissive in config..."
+sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+
+# Step 4: Create autorelabel
+echo "Creating .autorelabel for file relabeling..."
+touch /.autorelabel
+
+# Step 5: Reboot
+echo "System will reboot in 10 seconds to relabel files..."
+echo "After reboot, check logs and then enable enforcing mode."
+sleep 10
+reboot
+    </div>
+
+    <h2>Quick Reference Card</h2>
+
+    <table>
+        <tr>
+            <th>Task</th>
+            <th>Command</th>
+        </tr>
+        <tr>
+            <td>Check status</td>
+            <td><code>sestatus</code> or <code>getenforce</code></td>
+        </tr>
+        <tr>
+            <td>Temporarily disable</td>
+            <td><code>setenforce 0</code></td>
+        </tr>
+        <tr>
+            <td>Temporarily enable</td>
+            <td><code>setenforce 1</code></td>
+        </tr>
+        <tr>
+            <td>Permanently disable</td>
+            <td>Edit <code>/etc/selinux/config</code> → <code>SELINUX=disabled</code></td>
+        </tr>
+        <tr>
+            <td>View file context</td>
+            <td><code>ls -Z</code></td>
+        </tr>
+        <tr>
+            <td>View process context</td>
+            <td><code>ps -Z</code></td>
+        </tr>
+        <tr>
+            <td>Restore file context</td>
+            <td><code>restorecon -Rv /path</code></td>
+        </tr>
+        <tr>
+            <td>View booleans</td>
+            <td><code>getsebool -a</code></td>
+        </tr>
+        <tr>
+            <td>Set boolean permanently</td>
+            <td><code>setsebool -P boolean on</code></td>
+        </tr>
+        <tr>
+            <td>View audit logs</td>
+            <td><code>tail -f /var/log/audit/audit.log</code></td>
+        </tr>
+        <tr>
+            <td>Analyze denials</td>
+            <td><code>audit2why < /var/log/audit/audit.log</code></td>
+        </tr>
+    </table>
+
+    <div class="warning">
+        <strong>⚠️ Final Warning:</strong> 
+        <ul>
+            <li>Never disable SELinux permanently without understanding the security implications</li>
+            <li>Always test in permissive mode first before enforcing</li>
+            <li>Monitor logs regularly for denials</li>
+            <li>Use booleans and custom policies instead of disabling SELinux</li>
+            <li>Remember: SELinux is a critical security layer - work with it, not against it</li>
+        </ul>
+    </div>
+
+    <div class="note">
+        <strong>📚 Additional Resources:</strong>
+        <ul>
+            <li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/" target="_blank">Red Hat SELinux Guide</a></li>
+            <li><code>man selinux</code> - SELinux manual page</li>
+            <li><code>man semanage</code> - SELinux management tool manual</li>
+            <li><code>/etc/selinux/config</code> - Main configuration file</li>
+        </ul>
+    </div>
+</body>
+</html>
